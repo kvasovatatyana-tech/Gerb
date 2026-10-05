@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивная карта гербов Саратовской области</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 50%, #1a3a5c 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0d2137, #1a3a5c);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        header p {
+            font-size: 14px;
+            opacity: 0.85;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background: #0d2137;
+            padding: 12px;
+            flex-wrap: wrap;
+        }
+
+        .nav button {
+            background: transparent;
+            color: #a8c8e0;
+            border: 2px solid #2c5f8a;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .nav button:hover, .nav button.active {
+            background: #2c5f8a;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .intro {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .intro h2 {
+            color: #1a3a5c;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .intro p {
+            line-height: 1.6;
+            font-size: 15px;
+            color: #555;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 18px;
+            border: 2px solid #2c5f8a;
+            border-radius: 25px;
+            font-size: 15px;
+            font-family: inherit;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            border-color: #1a3a5c;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.25s, box-shadow 0.25s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .card-img {
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #eef4f8, #d5e5f0);
+            overflow: hidden;
+        }
+
+        .card-img img {
+            max-height: 130px;
+            max-width: 120px;
+            object-fit: contain;
+        }
+
+        .card-img .placeholder {
+            font-size: 40px;
+            color: #8aabcc;
+        }
+
+        .card-info {
+            padding: 10px 12px;
+        }
+
+        .card-info h3 {
+            font-size: 13px;
+            color: #1a3a5c;
+            margin-bottom: 2px;
+        }
+
+        .card-info p {
+            font-size: 11px;
+            color: #888;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 18px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            background: #e04040;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .modal-img {
+            width: 100%;
+            height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #eef4f8, #d5e5f0);
+            border-radius: 18px 18px 0 0;
+            overflow: hidden;
+        }
+
+        .modal-img img {
+            max-height: 260px;
+            max-width: 240px;
+            object-fit: contain;
+        }
+
+        .modal-img .placeholder {
+            font-size: 60px;
+            color: #8aabcc;
+        }
+
+        .modal-body {
+            padding: 20px 25px 25px;
+        }
+
+        .modal-body h2 {
+            color: #1a3a5c;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        .modal-body .center {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .modal-body .year {
+            display: inline-block;
+            background: #1a3a5c;
+            color: white;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .modal-body .desc {
+            line-height: 1.6;
+            font-size: 15px;
+            color: #444;
+        }
+
+        .modal-body .note {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f6fa;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #667;
+        }
+
+        /* Quiz */
+        .quiz-container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        .quiz-container h2 {
+            color: #1a3a5c;
+            margin-bottom: 10px;
+        }
+
+        .quiz-question {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .quiz-herb {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #eef4f8, #d5e5f0);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .quiz-herb img {
+            max-height: 180px;
+            max-width: 160px;
+            object-fit: contain;
+        }
+
+        .quiz-herb .placeholder {
+            font-size: 50px;
+            color: #8aabcc;
+        }
+
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .quiz-btn {
+            background: #eef4f8;
+            border: 2px solid #c5d9e8;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+            color: #333;
+        }
+
+        .quiz-btn:hover {
+            background: #d5e5f0;
+            border-color: #2c5f8a;
+        }
+
+        .quiz-btn.correct {
+            background: #c8f0c8;
+            border-color: #4caf50;
+            color: #2e6b2e;
+        }
+
+        .quiz-btn.wrong {
+            background: #f0c8c8;
+            border-color: #e04040;
+            color: #8b2020;
+        }
+
+        .quiz-btn:disabled {
+            cursor: default;
+        }
+
+        .quiz-score {
+            text-align: center;
+            font-size: 18px;
+            color: #1a3a5c;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        .quiz-feedback {
+            text-align: center;
+            font-size: 15px;
+            margin: 10px 0;
+            min-height: 22px;
+        }
+
+        .quiz-next {
+            display: block;
+            margin: 20px auto 0;
+            background: #1a3a5c;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-family: inherit;
+        }
+
+        .quiz-next:hover {
+            background: #2c5f8a;
+        }
+
+        .quiz-final {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .quiz-final h3 {
+            color: #1a3a5c;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        .quiz-final p {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        footer {
+            text-align: center;
+            color: #a8c8e0;
+            padding: 25px 15px;
+            font-size: 13px;
+        }
+
+        footer a {
+            color: #c8d8e8;
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 20px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+            .card-img { height: 110px; }
+            .card-img img { max-height: 100px; }
+            .quiz-options { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1> Интерактивная карта гербов Саратовской области</h1>
+        <p>Проект «Я — гражданин Земли Саратовской» • Саратовское геральдическое наследие</p>
+    </header>
+
+    <nav class="nav">
+        <button class="active" onclick="showSection('map')">Гербы районов</button>
+        <button onclick="showSection('quiz')">Викторина «Угадай герб»</button>
+        <button onclick="showSection('about')">О проекте</button>
+    </nav>
+
+    <div class="container">
+        <!-- Map section -->
+        <div class="section active" id="section-map">
+            <div class="intro">
+                <h2>Гербы 38 районов Саратовской области</h2>
+                <p>Нажмите на карточку района, чтобы увидеть герб в увеличенном виде и узнать, что означает его символика. В левом верхнем углу каждого районного герба находится герб Саратовской области (три серебряные стерляди) — знак принадлежности района к нашему региону.</p>
+            </div>
+            <input type="text" class="search-box" placeholder="Поиск района..." oninput="filterCards(this.value)">
+            <div class="grid" id="grid"></div>
+        </div>
+
+        <!-- Quiz section -->
+        <div class="section" id="section-quiz">
+            <div class="quiz-container" id="quiz-container">
+                <!-- Quiz content will be injected here -->
+            </div>
+        </div>
+
+        <!-- About section -->
+        <div class="section" id="section-about">
+            <div class="intro">
+                <h2>О проекте</h2>
+                <p><strong>«Интерактивная карта гербов Саратовской области»</strong> — проект, посвящённый популяризации геральдического наследия нашего края.</p>
+                <br>
+                <p><strong>Цель:</strong> создать интерактивную карту, которая поможет школьникам, учителям и всем жителям области узнать больше о геральдике своего края.</p>
+                <br>
+                <p><strong>Что на сайте:</strong></p>
+                <ul style="margin: 10px 0 10px 20px; line-height: 1.8;">
+                    <li>Гербы всех 38 районов Саратовской области с описанием символики</li>
+                    <li>Мини-викторина «Угадай герб района» для проверки знаний</li>
+                    <li>Информация об административных центрах и годе утверждения гербов</li>
+                </ul>
+                <br>
+                <p><strong>Источники:</strong> Геральдический регистр РФ, материалы Википедии, официальные сайты районов Саратовской области.</p>
+                <br>
+                <p style="font-size: 13px; color: #888;">Проект выполнен в рамках программы «Я — гражданин Земли Саратовской». Саратов, 2026 г.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+        <div class="modal" id="modal-content">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div class="modal-img" id="modal-img"></div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Интерактивная карта гербов Саратовской области • Изображения гербов: Wikimedia Commons • 2026 г.</p>
+    </footer>
+
+    <script>
+        const districts = [{"id": 1, "name": "Александрово-Гайский", "center": "с. Александров Гай", "img": "Coat_of_Arms_of_Aleksandrov-Gai_rayon_(Saratov_oblast).png", "year": "2003", "desc": "Зелёный щит с серебряной волнистой перевязью, сверху и снизу которой — по серебряной овце. Овца — символ полупустынной зоны и развитого овцеводства.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Aleksandrov-Gai_rayon_(Saratov_oblast).png"}, {"id": 2, "name": "Аркадакский", "center": "г. Аркадак", "img": "Coat_of_Arms_of_Arkadak_(Saratov_oblast).png", "year": "1998", "desc": "В золоте стоящий на зелёной оконечности червлёный (красный) лось. Лось — символ силы, мудрости и величия.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Arkadak_(Saratov_oblast).png"}, {"id": 3, "name": "Аткарский", "center": "г. Аткарск", "img": "", "year": "", "desc": "В серебряном поле три летящих птицы-рыболова, которых в окрестностях города было великое множество.", "img_url": ""}, {"id": 4, "name": "Базарно-Карабулакский", "center": "р.п. Базарный Карабулак", "img": "Coat_of_Arms_of_Bazarny_Karabulak_rayon_(Saratov_oblast).png", "year": "1998", "desc": "Золотая голова лося в нижней части, белый гриб между двух золотых веточек — символ богатства природы района.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Bazarny_Karabulak_rayon_(Saratov_oblast).png"}, {"id": 5, "name": "Балаковский", "center": "г. Балаково", "img": "Coat_of_Arms_of_Balakovsky_District_(Saratov_oblast).png", "year": "", "desc": "Герб отражает промышленное и сельскохозяйственное значение района — крупнейшего промышленного центра Саратовской области.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Balakovsky_District_(Saratov_oblast).png"}, {"id": 6, "name": "Балашовский", "center": "г. Балашов", "img": "", "year": "", "desc": "Герб отражает историческое значение Балашова как крупного торгового центра юга Саратовской области.", "img_url": ""}, {"id": 7, "name": "Балтайский", "center": "с. Балтай", "img": "Coat_of_Arms_of_Baltai_rayon_(Saratov_oblast).png", "year": "1999", "desc": "Дикий кабан — символ могущества и неустрашимости. Золотая корона символизирует достоинство территории, родины губернаторов П.А. Столыпина и Д.Ф. Аяцкова.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Baltai_rayon_(Saratov_oblast).png"}, {"id": 8, "name": "Вольский", "center": "г. Вольск", "img": "", "year": "1781", "desc": "Поле поделено на две части: верхняя — золотая (богатство, милосердие), нижняя — зелёная. В центре — лежащий чёрный медведь, «таковыми зверями сия страна изобилует».", "img_url": ""}, {"id": 9, "name": "Воскресенский", "center": "с. Воскресенское", "img": "Coat_of_Arms_of_Voskresensky_rayon_(Saratov_oblast).png", "year": "", "desc": "В лазури на зелёном холме — монастырь в виде трёх серебряных башен с золотыми куполами. Основан переселенцами из вотчин московского Воскресенского монастыря.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Voskresensky_rayon_(Saratov_oblast).png"}, {"id": 10, "name": "Дергачёвский", "center": "р.п. Дергачи", "img": "Coat_of_Arms_of_Dergachi_rayon_(Saratov_oblast).png", "year": "", "desc": "Птица дергач (коростель) — гласный герб, отражающий название района. В данной местности водится много этих птиц.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Dergachi_rayon_(Saratov_oblast).png"}, {"id": 11, "name": "Духовницкий", "center": "р.п. Духовницкое", "img": "Coat_of_Arms_of_Dukhovnitskoe_rayon_(Saratov_oblast).png", "year": "1997", "desc": "В лазури серебряная горлица с червлёными клювом и лапами, летящая с золотым колосом в клюве. Горлица — символ святого духа, колос — сельское хозяйство.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Dukhovnitskoe_rayon_(Saratov_oblast).png"}, {"id": 12, "name": "Екатериновский", "center": "р.п. Екатериновка", "img": "Coat_of_Arms_of_Ekaterinovka_rayon_(Saratov_oblast)_proposal.png", "year": "", "desc": "Герб отражает историю поселения, основанного в конце XVIII века. Назван в честь императрицы Екатерины II.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Ekaterinovka_rayon_(Saratov_oblast)_proposal.png"}, {"id": 13, "name": "Ершовский", "center": "г. Ершов", "img": "Coat_of_arms_of_Ershov.png", "year": "", "desc": "Назван в память инженера А.П. Ершова, основавшего станцию Рязано-Уральской железной дороги. На гербе изображён ёрш — гласный герб.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_arms_of_Ershov.png"}, {"id": 14, "name": "Ивантеевский", "center": "с. Ивантеевка", "img": "Coat_of_Arms_of_Ivanteevka_rayon_(Saratov_oblast).png", "year": "", "desc": "В зелёном поле на серебряной, поросшей ковылём земле — идущая золотая косуля. Косуля — яркий представитель фауны района.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Ivanteevka_rayon_(Saratov_oblast).png"}, {"id": 15, "name": "Калининский", "center": "г. Калининск", "img": "Coat_of_Arms_of_Kalininsk_(Saratov_oblast).png", "year": "1999", "desc": "В лазури два серебряных плывущих лебедя с червлёными глазами и клювами. Лебедь — символ красоты и чистоты.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Kalininsk_(Saratov_oblast).png"}, {"id": 16, "name": "Красноармейский", "center": "г. Красноармейск", "img": "Coat_of_Arms_of_Krasnoarmeysk_(Saratov_oblast).png", "year": "1999", "desc": "В червлёном, мурованном золотом поле — возникающий серебряный свиток (ткань сарпинка). Основан немецкими переселенцами в 1766 г.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Krasnoarmeysk_(Saratov_oblast).png"}, {"id": 17, "name": "Краснокутский", "center": "г. Красный Кут", "img": "Coat_of_Arms_of_Krasnokutsky_rayon_(Saratov_oblast).png", "year": "", "desc": "Герб отражает природные особенности района — степные просторы и залежные земли.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Krasnokutsky_rayon_(Saratov_oblast).png"}, {"id": 18, "name": "Краснопартизанский", "center": "р.п. Горный", "img": "Coat_of_Arms_of_Krasnopartizansky_rayon_(Saratov_oblast).png", "year": "2010", "desc": "Два цветка тюльпана переменных цветов между двумя головками колосьев. Тюльпаны — символ степной природы района.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Krasnopartizansky_rayon_(Saratov_oblast).png"}, {"id": 19, "name": "Лысогорский", "center": "р.п. Лысые Горы", "img": "Coat_of_Arms_of_Lysogorsky_rayon_(Saratov_oblast).png", "year": "", "desc": "В золотом поле с лазоревой оконечностью — зелёная «Лысая Гора», отражающая название местности. Лысые склоны Приволжской возвышенности.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Lysogorsky_rayon_(Saratov_oblast).png"}, {"id": 20, "name": "Марксовский", "center": "г. Маркс", "img": "", "year": "", "desc": "В червлёном поле над лазоревой волнистой оконечностью — золотой коронованный вензель императрицы Екатерины II. Основан как немецкая колония в 1766 г.", "img_url": ""}, {"id": 21, "name": "Новобурасский", "center": "р.п. Новые Бурасы", "img": "Coat_of_Arms_of_Novoburassky_rayon_(Saratov_oblast).png", "year": "", "desc": "Герб отражает природные и исторические особенности района на правом берегу Волги.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Novoburassky_rayon_(Saratov_oblast).png"}, {"id": 22, "name": "Новоузенский", "center": "г. Новоузенск", "img": "", "year": "", "desc": "Герб отражает положение района в полупустынной зоне Заволжья и традиции казахского населения.", "img_url": ""}, {"id": 23, "name": "Озинский", "center": "р.п. Озинки", "img": "Coat_of_Arms_of_Ozinki_rayon_(Saratov_oblast).png", "year": "1999", "desc": "Изображены «Синие горы» — характерная особенность рельефа, и степной орёл — символ просторов.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Ozinki_rayon_(Saratov_oblast).png"}, {"id": 24, "name": "Перелюбский", "center": "с. Перелюб", "img": "Coat_of_Arms_of_Perelyub_rayon_(Saratov_oblast).png", "year": "", "desc": "В зелёном поле — развевающийся на ветру серебряный ковыль, обвитый золотой змеей. Ковыль — степь, змея — мудрость и терпеливость многонационального населения.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Perelyub_rayon_(Saratov_oblast).png"}, {"id": 25, "name": "Петровский", "center": "г. Петровск", "img": "Coat_of_Arms_of_Petrovsk_(Saratov_oblast).png", "year": "1781", "desc": "Рука, выходящая из облака и держащая ключи. Петровск был основан как крепость, ключи символизируют его оборонительное значение.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Petrovsk_(Saratov_oblast).png"}, {"id": 26, "name": "Питерский", "center": "с. Питерка", "img": "Coat_of_Arms_of_Piterka_rayon_(Saratov_oblast).png", "year": "", "desc": "В червлёном поле — золотая ветряная мельница с четырьмя крыльями накрест. В районе сохранилась единственная в области ветряная мельница.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Piterka_rayon_(Saratov_oblast).png"}, {"id": 27, "name": "Пугачёвский", "center": "г. Пугачёв", "img": "", "year": "", "desc": "Герб отражает историческое значение Пугачёва (бывший Николаевск), связанного с Е.И. Пугачёвым.", "img_url": ""}, {"id": 28, "name": "Ровенский", "center": "р.п. Ровное", "img": "Coat_of_Arms_of_Rovnoe_rayon_(Saratob_aoblast).png", "year": "", "desc": "В лазоревом поле — серебряный голубь, несущий переломленную стрелу, сопровождаемый тремя золотыми кустами ковыля. Голубь — символ мира.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Rovnoe_rayon_(Saratob_aoblast).png"}, {"id": 29, "name": "Романовский", "center": "р.п. Романовка", "img": "Coat_of_Arms_of_Romanovka_rayon_(Saratov_oblast).png", "year": "", "desc": "На гербе изображена цапля — птица, характерная для водоёмов района.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Romanovka_rayon_(Saratov_oblast).png"}, {"id": 30, "name": "Ртищевский", "center": "г. Ртищево", "img": "", "year": "", "desc": "Сабли, стрела и подкова из герба рода Ртищевых. Бело-чёрный шнур, замкнутый в кольцо, — символ железной дороги, вокруг которой вырос город.", "img_url": ""}, {"id": 31, "name": "Самойловский", "center": "р.п. Самойловка", "img": "Coat_of_Arms_of_Samoilovsky_rayon_(Saratov_oblast).png", "year": "", "desc": "Голова лошади и снопы. Конь — символ трудолюбия, снопы — сельскохозяйственная специализация района.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Samoilovsky_rayon_(Saratov_oblast).png"}, {"id": 32, "name": "Саратовский", "center": "г. Саратов", "img": "Coat_of_Arms_of_Saratov_rayon_(Saratov_oblast).png", "year": "", "desc": "В червлёни золотая ветвь яблони о трёх яблоках над лазоревой оконечностью с серебряной стерлядью. Стерлядь — рыбные богатства, яблоки — садоводство.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Saratov_rayon_(Saratov_oblast).png"}, {"id": 33, "name": "Советский", "center": "р.п. Степное", "img": "Coat_of_Arms_of_Sovetskiy_rayon_(Saratov_oblast).png", "year": "", "desc": "В серебре чёрная перевязь с золотыми огнями и волнистыми лазоревыми перевязями. Огни — символ нефти и газа, синие полоски — реки Большой Караман и Нахой.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Sovetskiy_rayon_(Saratov_oblast).png"}, {"id": 34, "name": "Татищевский", "center": "р.п. Татищево", "img": "Coat_of_Arms_of_Tatishchevo_rayon_(Saratov_oblast).png", "year": "", "desc": "В лазури на серебряном колоколе — золотая райская птица (гамаюн). Гамаюн — символ мудрости и пророчеств.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Tatishchevo_rayon_(Saratov_oblast).png"}, {"id": 35, "name": "Турковский", "center": "р.п. Турки", "img": "Coat_of_Arms_of_Turkovsky_rayon_(Saratov_oblast).png", "year": "", "desc": "На гербе изображена рысь — от названия бывшего села Рысье, переименованного в Турки.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Turkovsky_rayon_(Saratov_oblast).png"}, {"id": 36, "name": "Фёдоровский", "center": "р.п. Мокроус", "img": "", "year": "", "desc": "Зелёное поле — степные просторы, хлебный каравай на полотенце с солонкой — символ гостеприимства жителей района.", "img_url": ""}, {"id": 37, "name": "Хвалынский", "center": "г. Хвалынск", "img": "", "year": "", "desc": "Герб связан с стерлядью — символом рыбных богатств Волги. Хвалынск — старейший город области.", "img_url": ""}, {"id": 38, "name": "Энгельсский", "center": "г. Энгельс", "img": "Coat_of_Arms_of_Engels_(Saratov_oblast).png", "year": "2000", "desc": "Золотой щит с чёрным быком, на спине которого — красная чаша с серебряной солью. Бык с солью напоминает о Большом Соляном пути. Золото — хлебные богатства Заволжья.", "img_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Coat_of_Arms_of_Engels_(Saratov_oblast).png"}];
+
+        // Render grid
+        function renderGrid(filter = '') {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            const filtered = districts.filter(d =>
+                d.name.toLowerCase().includes(filter.toLowerCase()) ||
+                d.center.toLowerCase().includes(filter.toLowerCase())
+            );
+            filtered.forEach(d => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => openModal(d.id);
+                const imgHTML = d.img_url
+                    ? `<img src="${d.img_url}" alt="${d.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=placeholder>🛡️</div>'">`
+                    : `<div class="placeholder">🛡️</div>`;
+                card.innerHTML = `
+                    <div class="card-img">${imgHTML}</div>
+                    <div class="card-info">
+                        <h3>${d.name}</h3>
+                        <p>${d.center}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterCards(val) {
+            renderGrid(val);
+        }
+
+        // Modal
+        function openModal(id) {
+            const d = districts.find(x => x.id === id);
+            if (!d) return;
+            const modal = document.getElementById('modal');
+            const imgDiv = document.getElementById('modal-img');
+            const bodyDiv = document.getElementById('modal-body');
+            imgDiv.innerHTML = d.img_url
+                ? `<img src="${d.img_url}" alt="${d.name}" onerror="this.parentElement.innerHTML='<div class=placeholder>🛡️</div>'">`
+                : `<div class="placeholder">🛡️</div>`;
+            bodyDiv.innerHTML = `
+                <h2>${d.name} район</h2>
+                <p class="center">Административный центр: ${d.center}</p>
+                ${d.year ? `<span class="year">Герб утверждён: ${d.year} г.</span>` : ''}
+                <p class="desc">${d.desc}</p>
+                <div class="note">В вольной части (верхний левый угол) — герб Саратовской области: три серебряные стерляди в лазоревом поле, расположенные вилообразным крестом.</div>
+            `;
+            modal.classList.add('show');
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== document.getElementById('modal')) return;
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        // Sections
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById('section-' + name).classList.add('active');
+            event.target.classList.add('active');
+            if (name === 'quiz') startQuiz();
+        }
+
+        // Quiz
+        let quizScore = 0;
+        let quizRound = 0;
+        let quizTotal = 10;
+        let currentQuiz = null;
+        let quizAnswered = false;
+
+        function startQuiz() {
+            quizScore = 0;
+            quizRound = 0;
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (quizRound >= quizTotal) {
+                showQuizFinal();
+                return;
+            }
+            quizRound++;
+            quizAnswered = false;
+            // Pick a random district with an image
+            const withImages = districts.filter(d => d.img_url);
+            const correct = withImages[Math.floor(Math.random() * withImages.length)];
+            // Pick 3 wrong answers
+            const wrong = districts.filter(d => d.id !== correct.id).sort(() => Math.random() - 0.5).slice(0, 3);
+            const options = [correct, ...wrong].sort(() => Math.random() - 0.5);
+            currentQuiz = { correct, options };
+
+            const container = document.getElementById('quiz-container');
+            container.innerHTML = `
+                <h2>Викторина «Угадай герб»</h2>
+                <p class="quiz-score">Вопрос ${quizRound} из ${quizTotal} • Очки: ${quizScore}</p>
+                <p class="quiz-question">Какому району принадлежит этот герб?</p>
+                <div class="quiz-herb">
+                    <img src="${correct.img_url}" alt="Герб" onerror="this.parentElement.innerHTML='<div class=placeholder>🛡️</div>'">
+                </div>
+                <div class="quiz-options" id="quiz-options">
+                    ${options.map(o => `<button class="quiz-btn" onclick="answerQuiz(${o.id})">${o.name}</button>`).join('')}
+                </div>
+                <p class="quiz-feedback" id="quiz-feedback"></p>
+                <button class="quiz-next" id="quiz-next" style="display:none" onclick="nextQuestion()">Следующий вопрос →</button>
+            `;
+        }
+
+        function answerQuiz(id) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+            const buttons = document.querySelectorAll('.quiz-btn');
+            const feedback = document.getElementById('quiz-feedback');
+            const nextBtn = document.getElementById('quiz-next');
+            if (id === currentQuiz.correct.id) {
+                quizScore++;
+                feedback.innerHTML = '✅ Правильно! ' + currentQuiz.correct.desc.substring(0, 80) + '...';
+                feedback.style.color = '#2e6b2e';
+            } else {
+                feedback.innerHTML = '❌ Неверно. Правильный ответ: <strong>' + currentQuiz.correct.name + ' район</strong>';
+                feedback.style.color = '#8b2020';
+            }
+            buttons.forEach(b => {
+                b.disabled = true;
+                if (b.textContent === currentQuiz.correct.name) b.classList.add('correct');
+                else if (b.textContent === districts.find(d => d.id === id).name) b.classList.add('wrong');
+            });
+            nextBtn.style.display = 'block';
+        }
+
+        function showQuizFinal() {
+            const container = document.getElementById('quiz-container');
+            let msg = '';
+            if (quizScore >= 9) msg = '🎉 Превосходно! Вы настоящий знаток геральдики!';
+            else if (quizScore >= 7) msg = '👍 Отличный результат! Вы хорошо знаете гербы области!';
+            else if (quizScore >= 5) msg = 'Неплохо! Но есть куда расти.';
+            else if (quizScore >= 3) msg = 'Можно лучше! Изучите гербы и попробуйте снова.';
+            else msg = 'Не расстраивайтесь! Потренируйтесь в разделе «Гербы районов».';
+            container.innerHTML = `
+                <div class="quiz-final">
+                    <h3>Викторина завершена!</h3>
+                    <p>Ваш результат: <strong>${quizScore} из ${quizTotal}</strong></p>
+                    <p>${msg}</p>
+                    <button class="quiz-next" onclick="startQuiz()">Пройти ещё раз ↻</button>
+                </div>
+            `;
+        }
+
+        // Init
+        renderGrid();
+    </script>
+</body>
+</html>
